@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios from 'node-karin/axios'
 
 /**
  * @typedef {Object} Server
@@ -92,10 +92,10 @@ export class NezhaClient {
    * @return {Promise<Array<Server>>}
    */
   async listServers (tag = '') {
-    let serversRsp = await axios.get(`${this.endpoint}/api/v1/server/list?tag=${tag}`, {
+    const serversRsp = await axios.get(`${this.endpoint}/api/v1/server/list?tag=${tag}`, {
       headers: {
-        Authorization: `${this.token}`
-      }
+        Authorization: `${this.token}`,
+      },
     })
     if (serversRsp.status !== 200) throw new Error('获取服务器列表失败: ' + serversRsp.statusText)
     return serversRsp.data?.result
@@ -108,10 +108,10 @@ export class NezhaClient {
    * @return {Promise<ServerDetail[]>}
    */
   async getServerDetails (id) {
-    let serverRsp = await axios.get(`${this.endpoint}/api/v1/server/details?id=${id}`, {
+    const serverRsp = await axios.get(`${this.endpoint}/api/v1/server/details?id=${id}`, {
       headers: {
-        Authorization: `${this.token}`
-      }
+        Authorization: `${this.token}`,
+      },
     })
     if (serverRsp.status !== 200) throw new Error('获取服务器信息失败: ' + serverRsp.statusText)
     return serverRsp.data.result

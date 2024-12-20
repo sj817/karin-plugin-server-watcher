@@ -3,9 +3,20 @@
   "version": "0.0.1",
   "author": "ikechan8370",
   "type": "module",
+  "main": "index.js",
   "dependencies": {
   },
-  "imports": {
-    "#Karin": "./lib/index.js"
+  "karin": {
+    "apps": [
+      "lib/apps"
+    ],
+    "static": [
+      "resources"
+    ],
+    "files": [
+      "config",
+      "data",
+      "resources"
+    ]
   }
 }

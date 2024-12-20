@@ -1,8 +1,8 @@
 import { NezhaClient } from '../models/nezha.js'
-import Cfg from '../lib/config.js'
+import { Nezha } from '../lib/config.js'
 import { dirPath } from '../index.js'
 import fs from 'fs'
-import { redis } from '#Karin'
+import { redis } from 'node-karin'
 
 /**
  * @typedef {'cpu' | 'memory' | 'disk' | 'upload_speed' | 'download_speed'} CheckItem
@@ -32,7 +32,7 @@ export const TYPE_MAP = {
   memory: '内存',
   disk: '磁盘',
   upload_speed: '上传速度',
-  download_speed: '下载速度'
+  download_speed: '下载速度',
 }
 
 /**
@@ -40,45 +40,45 @@ export const TYPE_MAP = {
  * @param props
  * @return {Promise<AlertSummary[]>}
  */
-export async function check (props = Cfg.Nezha) {
-  let client = new NezhaClient(props)
-  let servers = await client.listServers()
-  let idArr = servers.map(server => server.id)
-  let ids = idArr.join(',')
-  let serverDetails = await client.getServerDetails(ids)
+export async function check (props = Nezha()) {
+  const client = new NezhaClient(props)
+  const servers = await client.listServers()
+  const idArr = servers.map(server => server.id)
+  const ids = idArr.join(',')
+  const serverDetails = await client.getServerDetails(ids)
   /**
    * 结果
    * @type {AlertSummary[]}
    */
-  let results = []
+  const results = []
   /**
    * 本次拿到的map
    * @type {Map<number, ServerDetail>}
    */
-  let map = new Map()
+  const map = new Map()
   serverDetails.forEach(serverDetail => {
     serverDetail.calculated = {
       disk_rate: serverDetail.status.DiskUsed / serverDetail.host.DiskTotal,
-      memory_rate: serverDetail.status.MemUsed / serverDetail.host.MemTotal
+      memory_rate: serverDetail.status.MemUsed / serverDetail.host.MemTotal,
     }
     map.set(serverDetail.id, serverDetail)
   })
 
   // 比较。只比较：CPU占用高于阈值、内存占用高于阈值、磁盘占用高于阈值、上传下载速度高于阈值
-  let cfg = Cfg.Nezha
-  let rules = cfg.check_rules
-  let items = rules.items
+  const cfg = Nezha()
+  const rules = cfg.check_rules
+  const items = rules.items
 
   // 遍历本次拿到的每一个服务器
-  for (let id of idArr) {
+  for (const id of idArr) {
     /**
      * result
      * @type {AlertSummary}
      */
-    let result = {}
+    const result = {}
     // 获取该服务器之前的状态
-    let redisKey = `nezha:status:${id}`
-    let recordBeforeValue = await redis.get(redisKey)
+    const redisKey = `nezha:status:${id}`
+    const recordBeforeValue = await redis.get(redisKey)
     /**
      * 之前的状态
      * @type {AlertRecord}
@@ -87,23 +87,23 @@ export async function check (props = Cfg.Nezha) {
     if (recordBeforeValue) {
       try {
         recordBefore = JSON.parse(recordBeforeValue)
-      } catch (e) {}
+      } catch (e) { }
     }
     let rule = rules.exception[id]
     rule = overrideRules(items, rule)
 
-    let cpuRule = rule.find(r => r.name === 'cpu')
-    let memRule = rule.find(r => r.name === 'memory')
-    let diskRule = rule.find(r => r.name === 'disk')
-    let uploadRule = rule.find(r => r.name === 'upload_speed')
-    let downloadRule = rule.find(r => r.name === 'download_speed')
+    const cpuRule = rule.find(r => r.name === 'cpu')
+    const memRule = rule.find(r => r.name === 'memory')
+    const diskRule = rule.find(r => r.name === 'disk')
+    const uploadRule = rule.find(r => r.name === 'upload_speed')
+    const downloadRule = rule.find(r => r.name === 'download_speed')
 
     /**
      * 本次要记录的record
      * @type {AlertRecord}
      */
-    let newRecord = { id, alerts: [] }
-    let server = map.get(id)
+    const newRecord = { id, alerts: [] }
+    const server = map.get(id)
 
     /**
      * 处理本次高了的指标
@@ -120,13 +120,13 @@ export async function check (props = Cfg.Nezha) {
           eventStartTime = new Date().getTime() / 1000
         }
         // 如果newRecord的startTime到此刻超出了阈值
-        let lastFor = new Date().getTime() / 1000 - eventStartTime
+        const lastFor = new Date().getTime() / 1000 - eventStartTime
         if (lastFor > threshold) {
           result[type] = {
             last: lastFor,
             currentValue: value,
             type: 'alert',
-            server
+            server,
           }
           newRecord.alerts.push({ type, startTime: eventStartTime, hit: true })
         } else {
@@ -136,13 +136,13 @@ export async function check (props = Cfg.Nezha) {
       } else {
         // 低于阈值，不记录
         // 但是如果之前是hit = true状态需要推送unalert事件解除警告
-        let before = recordBefore.alerts?.find(alert => alert.type === type)
+        const before = recordBefore.alerts?.find(alert => alert.type === type)
         if (before && before.hit) {
           result[type] = {
             last: 0,
             currentValue: value,
             type: 'unalert',
-            server
+            server,
           }
         }
       }
@@ -165,7 +165,7 @@ export async function check (props = Cfg.Nezha) {
   }
 
   // 最后存入留档
-  let path = `${dirPath}/data/servers_${new Date().getTime()}.json`
+  const path = `${dirPath}/data/servers_${new Date().getTime()}.json`
   fs.writeFileSync(path, JSON.stringify(serverDetails, null, 2))
 
   return results
@@ -177,17 +177,17 @@ export async function check (props = Cfg.Nezha) {
  * @param {Array<{name: string, threshold: number?, last_for: number?, enable: number?}>?} override
  */
 function overrideRules (defaultRule, override = []) {
-  let map = new Map()
+  const map = new Map()
   defaultRule.forEach(rule => {
     map.set(rule.name, rule)
   })
   override.forEach(rule => {
-    let name = rule.name
+    const name = rule.name
     if (map.has(name)) {
-      let defaultRule = map.get(name)
+      const defaultRule = map.get(name)
       map.set(name, {
         ...defaultRule,
-        ...rule
+        ...rule,
       })
     } else {
       map.set(name, rule)

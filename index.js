@@ -1,5 +1,5 @@
 import path from 'path'
-import { logger, common } from '#Karin'
+import { logger, common } from 'node-karin'
 
 /** 当前文件的绝对路径 */
 const filePath = common.absPath(import.meta.url.replace(/^file:(\/\/\/|\/\/)/, ''))
@@ -10,6 +10,6 @@ const basename = path.basename(dirname)
 /** 插件包相对路径 */
 const dirPath = './plugins/' + basename
 
-export { dirPath }
+export { dirPath, basename }
 
 logger.info(basename + ' 插件 0.0.1初始化~')
